@@ -1,0 +1,63 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <time.h>
+
+#define NUM_POINTS 100000000  
+#define NUM_THREADS 8         
+
+typedef struct {
+    long hits;
+    long points_per_thread;
+} thread_data_t;
+
+
+double rand_double() {
+    return (2.0 * rand() / RAND_MAX) - 1.0;
+}
+
+
+void *monte_carlo_pi(void *arg) {
+    thread_data_t *data = (thread_data_t *)arg;
+    long hits = 0;
+
+    for (long i = 0; i < data->points_per_thread; i++) {
+        double x = rand_double();
+        double y = rand_double();
+        if (x * x + y * y <= 1.0) {
+            hits++;
+        }
+    }
+
+    data->hits = hits;
+    pthread_exit(NULL);
+}
+
+int main() {
+    srand(time(NULL));  
+
+    pthread_t threads[NUM_THREADS];
+    thread_data_t thread_data[NUM_THREADS];
+
+    long points_per_thread = NUM_POINTS / NUM_THREADS;
+    long total_hits = 0;
+
+    
+    for (int i = 0; i < NUM_THREADS; i++) {
+        thread_data[i].points_per_thread = points_per_thread;
+        thread_data[i].hits = 0;
+        pthread_create(&threads[i], NULL, monte_carlo_pi, (void *)&thread_data[i]);
+    }
+
+    
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL);
+        total_hits += thread_data[i].hits;
+    }
+
+    
+    double pi = 4.0 * total_hits / NUM_POINTS;
+    printf("Estimated Pi with %d threads: %f\n", NUM_THREADS, pi);
+
+    return 0;
+}
